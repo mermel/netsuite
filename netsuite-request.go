@@ -7,11 +7,13 @@ import (
   "bytes"
   "io/ioutil"
   "os"
+  "encoding/json"
+  "errors"
 
   "github.com/VioletGrey/error-handler"
 )
 
-type Response struct {
+type NetsuiteResponse struct {
   Success bool
   Message, Id string
 }
@@ -36,6 +38,18 @@ func GetNetsuiteUserRequest(id string, email string) (responseBody []byte) {
   defer resp.Body.Close()
   body, _ := ioutil.ReadAll(resp.Body)
   return body
+}
+
+func ProcessResponse(body []byte) (id string){
+  var nsResponse NetsuiteResponse
+  err := json.Unmarshal(body, &nsResponse)
+  vgError.FailOnError(err, "Failure: Failed to create or update object from NetSuite", string(body))
+
+  if nsResponse.Success != true {
+    err = errors.New("netsuite returned failed status code")
+    vgError.FailOnError(err, "Failure: Netusite POST/PUT failed", nsResponse.Message)
+  }
+  return nsResponse.Id
 }
 
 func NetsuiteRequest(requestType string, scriptType string, requestBody []byte)(body []byte){
